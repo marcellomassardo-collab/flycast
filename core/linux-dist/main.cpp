@@ -346,6 +346,19 @@ int main(int argc, char* argv[])
 		launch_argv[1] = strstr(boot_params, "&param=") + 7;
 		is_standalone = true;
 	}
+	// Test mode: boot a game directly if ux0:data/flycast/autostart.txt exists (one line: path of the game)
+	static char autostartPath[512];
+	if (argc == 0) {
+		FILE *af = fopen("ux0:data/flycast/autostart.txt", "r");
+		if (af != nullptr) {
+			if (fgets(autostartPath, sizeof(autostartPath), af) != nullptr) {
+				size_t l = strlen(autostartPath);
+				while (l > 0 && (autostartPath[l - 1] == 10 || autostartPath[l - 1] == 13)) autostartPath[--l] = 0;
+				if (l > 0) { argc = 2; launch_argv[1] = autostartPath; }
+			}
+			fclose(af);
+		}
+	}
 	argv = launch_argv;
 
 	scePowerSetArmClockFrequency(444);

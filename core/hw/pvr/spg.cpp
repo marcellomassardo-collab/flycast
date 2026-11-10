@@ -1,4 +1,6 @@
 #include "spg.h"
+
+unsigned diag_vblank_count = 0; // emulated vblanks, used by the Vita test mode to measure game speed
 #include "hw/holly/holly_intc.h"
 #include "hw/holly/sb.h"
 #include "hw/sh4/sh4_sched.h"
@@ -183,6 +185,7 @@ static int spg_line_sched(int tag, int cycles, int jitter, void *arg)
 			replay_input();
 #endif
 
+			diag_vblank_count++;
 #if !defined(NDEBUG) || defined(DEBUGFAST)
 			vblk_cnt++;
 			if (getTimeMs() - last_fps >= 2000)

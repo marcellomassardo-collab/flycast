@@ -1464,6 +1464,28 @@ static std::string getFPSNotification()
 			fps = ((float)MainFrameCount - lastFrameCount) * 1000.f / (now - LastFPSTime);
 			LastFPSTime = now;
 			lastFrameCount = MainFrameCount;
+#ifdef __vita__
+			{
+				// Test mode: if ux0:data/flycast/diag.txt exists, log fps and emulated vblanks every second
+				// and save a small screenshot every 10 seconds, so the port can be tested without looking at the screen
+				static int diagOn = -1, diagN = 0;
+				if (diagOn < 0) { FILE *df = fopen("ux0:data/flycast/diag.txt", "r"); diagOn = df != nullptr; if (df) fclose(df); }
+				if (diagOn) {
+					extern unsigned diag_vblank_count;
+					static unsigned lastVbl = 0;
+					NOTICE_LOG(RENDERER, "DIAG fps %.1f vbl %u", fps, diag_vblank_count - lastVbl);
+					lastVbl = diag_vblank_count;
+					if (++diagN % 10 == 0) {
+						std::vector<u8> shot;
+						getScreenshot(shot, 320);
+						if (!shot.empty()) {
+							FILE *sf = fopen("ux0:data/flycast/diag_shot.png", "wb");
+							if (sf) { fwrite(&shot[0], 1, shot.size(), sf); fclose(sf); }
+						}
+					}
+				}
+			}
+#endif
 		}
 		if (fps >= 0.f && fps < 9999.f) {
 			char text[32];
