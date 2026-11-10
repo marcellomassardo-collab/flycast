@@ -53,4 +53,27 @@ Measured with the test mode (`autostart.txt` + `diag.txt` in `ux0:data/flycast`)
 | Power Stone 2 | same | 55-58 fps at first, 28-35 in heavier scenes |
 | Sonic Adventure (PAL) | same | about 36 of 50 vblanks/s in 3D areas |
 
+**Correction (same day):** the Rez figures above were measured against 50 vblanks per second, but the game
+runs in 60 Hz mode: in-game speed was about 71-80%, not ~100%. Audio crackled the whole time. The table below
+is measured against 60, with the audio underrun counter of the test mode.
+
+## Where the time goes (Rez attract demo, 500 MHz unless noted)
+
+| Build | In-game speed | Audio underruns per second |
+|---|---|---|
+| upstream settings, 444 MHz | 71% | 12.5 |
+| + idle loop skipping | 76% | 10.1 |
+| + `Sh4Clock=80` | 79% (90% in the last minute) | 9.3 (4.6) |
+| same at 500 MHz | 81% (95%) | 8.2 (2.0) |
+| + AICA batches and per-channel mixing | 81% (96%) | 7.9 (1.3) |
+
+- The render thread is busy only ~39% of the time and the emulation almost never waits for it, so resolution,
+  frame skipping, vsync and per-strip sorting change nothing in Rez. The emulation thread is the limit.
+- The AICA took about 38% of the emulation thread before batching.
+- Memory faults are negligible in game; thread affinity makes no difference.
+- Jet Set Radio is render bound instead: about 12 ms per frame reading the TA commands, 6 ms building the
+  passes and 13 ms drawing, at 18 fps.
+- An LTO build was tried and dropped: mixed results in Jet Set Radio and Rez no longer reached its demo.
+- Virtua Tennis (USA) crashes the GPU (`GPUCRASH` dump) and powers the console off.
+
 `pvr.AutoSkipFrame=2` and `rend.ModifierVolumes=no` made no measurable difference in Rez.
