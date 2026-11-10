@@ -9,6 +9,8 @@
 #include <atomic>
 #include <mutex>
 
+unsigned audio_underrun_count = 0; // audio callbacks that had to output silence (read by the Vita test mode)
+
 class SDLAudioBackend : AudioBackend
 {
 	SDL_AudioDeviceID audiodev {};
@@ -37,6 +39,7 @@ class SDLAudioBackend : AudioBackend
 		if (backend->sample_count < islen)
 		{
 			// No data, just output a bit of silence for the underrun
+			audio_underrun_count++;
 			memset(stream, 0, len);
 			backend->stream_mutex.unlock();
 			backend->read_wait.Set();

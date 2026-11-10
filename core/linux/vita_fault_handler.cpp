@@ -30,20 +30,29 @@ void context_from_segfault(host_context_t *hostctx, void *segfault_ctx)
 	hostctx->pc = abortContext->pc;
 }
 
+// Vita test mode: memory faults per kind, read and reset by the fps log
+unsigned diag_fault_code = 0, diag_fault_vram = 0, diag_fault_fpcb = 0, diag_fault_rewrite = 0;
+
 void abortHandler(KuKernelAbortContext *abortContext)
 {
 	// Ram watcher for net rollback
 	if (memwatch::writeAccess((u8 *)abortContext->FAR))
 		return;
 	// code protection in RAM
-	if (bm_RamWriteAccess((u8*)abortContext->FAR))
+	if (bm_RamWriteAccess((u8*)abortContext->FAR)) {
+		diag_fault_code++;
 		return;
+	}
 	// texture protection in VRAM
-	if (VramLockedWrite((u8*)abortContext->FAR))
+	if (VramLockedWrite((u8*)abortContext->FAR)) {
+		diag_fault_vram++;
 		return;
+	}
 	// FPCB jump table protection
-	if (addrspace::bm_lockedWrite((u8*)abortContext->FAR))
+	if (addrspace::bm_lockedWrite((u8*)abortContext->FAR)) {
+		diag_fault_fpcb++;
 		return;
+	}
 
 #if FEAT_SHREC == DYNAREC_JIT
 	// fast mem access rewriting
@@ -52,6 +61,7 @@ void abortHandler(KuKernelAbortContext *abortContext)
 	if (sh4Dynarec->rewrite(ctx, (void *)abortContext->FAR))
 	{
 		context_to_segfault(&ctx, abortContext);
+		diag_fault_rewrite++;
 		return;
 	}
 #endif

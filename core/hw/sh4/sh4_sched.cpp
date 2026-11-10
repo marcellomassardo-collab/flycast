@@ -157,6 +157,14 @@ static int sh4_sched_elapsed(sched_list& sched)
 		return -1;
 }
 
+#ifdef __vita__
+#include <chrono>
+// Vita test mode: microseconds spent in each scheduler callback, read and reset by the fps log
+unsigned diag_sched_us[32];
+void *diag_sched_cb[32];
+static inline unsigned diagSchedNowUs() { return (unsigned)std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::steady_clock::now().time_since_epoch()).count(); }
+#endif
+
 static void handle_cb(sched_list& sched)
 {
 	int remain = sched.end - sched.start;
@@ -164,7 +172,16 @@ static void handle_cb(sched_list& sched)
 	int jitter = elapsd - remain;
 
 	sched.end = -1;
+#ifdef __vita__
+	unsigned diagT0 = diagSchedNowUs();
+#endif
 	int re_sch = sched.cb(sched.tag, remain, jitter, sched.arg);
+#ifdef __vita__
+	{
+		unsigned idx = &sched - &sch_list[0];
+		if (idx < 32) { diag_sched_us[idx] += diagSchedNowUs() - diagT0; diag_sched_cb[idx] = (void *)sched.cb; }
+	}
+#endif
 
 	if (re_sch > 0)
 		sh4_sched_request(&sched - &sch_list[0], std::max(0, re_sch - jitter));

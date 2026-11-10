@@ -1243,6 +1243,11 @@ void setTileClipping(rend_context& ctx)
 	ctx.tileClip.size.y = ymax - ctx.tileClip.origin.y;
 }
 
+#include <chrono>
+// Vita test mode: microseconds in the two halves of the scene preparation
+unsigned diag_us_tacmd = 0, diag_us_pass = 0;
+static inline unsigned diagTaNowUs() { return (unsigned)std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::steady_clock::now().time_since_epoch()).count(); }
+
 static void ta_parse_vdrc(TA_context* ctx, bool primRestart)
 {
 	verify(vd_ctx == nullptr);
@@ -1262,12 +1267,14 @@ static void ta_parse_vdrc(TA_context* ctx, bool primRestart)
 		Ta_Dma* ta_data = (Ta_Dma *)childCtx->getTADataBegin();
 		Ta_Dma* ta_data_end = (Ta_Dma *)childCtx->getTADataEnd();
 
+		unsigned diagT0 = diagTaNowUs();
 		while (ta_data < ta_data_end)
 			try {
 				ta_data = BaseTAParser::TaCmd(ta_data, ta_data_end);
 			} catch (const TAParserException& e) {
 				break;
 			}
+		diag_us_tacmd += diagTaNowUs() - diagT0;
 
 		// Disable blending for opaque polys of the first pass
 		if (pass == 0)
@@ -1294,7 +1301,9 @@ static void ta_parse_vdrc(TA_context* ctx, bool primRestart)
 			render_pass.mvo_count = vd_rc.global_param_mvo.size();
 			render_pass.mvo_tr_count = vd_rc.global_param_mvo_tr.size();
 
+			unsigned diagT1 = diagTaNowUs();
 			parseRenderPass(render_pass, previousPass, vd_rc, primRestart);
+			diag_us_pass += diagTaNowUs() - diagT1;
 			previousPass = render_pass;
 		}
 		childCtx = childCtx->nextContext;

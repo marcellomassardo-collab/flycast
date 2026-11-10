@@ -34,6 +34,10 @@ static cResetEvent vramRollback;
 // direct framebuffer write detection
 static bool render_called = false;
 
+#include <chrono>
+// Vita test mode: microseconds spent per stage, read and reset by the fps log
+unsigned diag_us_process = 0, diag_us_render = 0, diag_us_wait = 0, diag_frames = 0;
+static inline unsigned diagNowUs() { return (unsigned)std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::steady_clock::now().time_since_epoch()).count(); }
 static bool pend_rend;
 static bool rendererEnabled = true;
 
@@ -216,7 +220,9 @@ private:
 		{
 			FC_PROFILE_SCOPE_NAMED("Renderer::Process");
 			try {
+				unsigned t0 = diagNowUs();
 				renderer->Process(taContext);
+				diag_us_process += diagNowUs() - t0; diag_frames++;
 			} catch (...) {
 				renderEnd.Set();
 				rend_allow_rollback();
@@ -232,7 +238,9 @@ private:
 		{
 			FC_PROFILE_SCOPE_NAMED("Renderer::Render");
 			try {
+				unsigned t0 = diagNowUs();
 				renderer->Render();
+				diag_us_render += diagNowUs() - t0;
 			} catch (...) {
 				if (!renderToScreen)
 					renderEnd.Set();
@@ -657,8 +665,11 @@ int rend_end_render(int tag, int cycles, int jitter, void *arg)
 		asic_RaiseInterrupt(holly_RENDER_DONE_isp);
 		asic_RaiseInterrupt(holly_RENDER_DONE_vd);
 	}
-	if (pend_rend && config::ThreadedRendering)
+	if (pend_rend && config::ThreadedRendering) {
+		unsigned t0 = diagNowUs();
 		renderEnd.Wait();
+		diag_us_wait += diagNowUs() - t0;
+	}
 
 	return 0;
 }

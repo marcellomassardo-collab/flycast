@@ -1473,9 +1473,27 @@ static std::string getFPSNotification()
 				if (diagOn) {
 					extern unsigned diag_vblank_count;
 					static unsigned lastVbl = 0;
-					NOTICE_LOG(RENDERER, "DIAG fps %.1f vbl %u", fps, diag_vblank_count - lastVbl);
+					extern unsigned audio_underrun_count;
+					static unsigned lastUnd = 0;
+					NOTICE_LOG(RENDERER, "DIAG fps %.1f vbl %u und %u", fps, diag_vblank_count - lastVbl, audio_underrun_count - lastUnd);
+					lastUnd = audio_underrun_count;
+					extern unsigned diag_us_process, diag_us_render, diag_us_wait, diag_frames;
+					NOTICE_LOG(RENDERER, "DIAG ms process %u render %u wait %u frames %u", diag_us_process / 1000, diag_us_render / 1000, diag_us_wait / 1000, diag_frames);
+					diag_us_process = diag_us_render = diag_us_wait = diag_frames = 0;
+					extern unsigned diag_fault_code, diag_fault_vram, diag_fault_fpcb, diag_fault_rewrite;
+					NOTICE_LOG(RENDERER, "DIAG faults code %u vram %u fpcb %u rewrite %u", diag_fault_code, diag_fault_vram, diag_fault_fpcb, diag_fault_rewrite);
+					diag_fault_code = diag_fault_vram = diag_fault_fpcb = diag_fault_rewrite = 0;
+					{
+						extern unsigned diag_sched_us[32]; extern void *diag_sched_cb[32];
+						char sl[400]; int sn = 0; sl[0] = 0;
+						for (int si = 0; si < 32 && sn < 360; si++)
+							if (diag_sched_us[si] >= 2000) sn += snprintf(sl + sn, sizeof(sl) - sn, " %p=%u", diag_sched_cb[si], diag_sched_us[si] / 1000);
+						NOTICE_LOG(RENDERER, "DIAG sched ms%s", sl);
+						{ extern unsigned diag_us_tacmd, diag_us_pass; NOTICE_LOG(RENDERER, "DIAG scene ms tacmd %u pass %u", diag_us_tacmd / 1000, diag_us_pass / 1000); diag_us_tacmd = diag_us_pass = 0; }
+						for (int si = 0; si < 32; si++) diag_sched_us[si] = 0;
+					}
 					lastVbl = diag_vblank_count;
-					if (++diagN % 10 == 0) {
+					if (++diagN % 30 == 0) {
 						std::vector<u8> shot;
 						getScreenshot(shot, 320);
 						if (!shot.empty()) {
