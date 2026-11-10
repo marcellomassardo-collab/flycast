@@ -1,5 +1,9 @@
 # PS Vita build notes
 
+This fork of [scribam/flycast](https://github.com/scribam/flycast) (`dev_vita` branch) adds two crash fixes for the
+PS Vita port, an optional test mode and these notes. The crashes were tracked down and fixed with the help of
+Claude (Anthropic), working from crash dumps, logs and automated runs on a real console.
+
 Notes from building the `dev_vita` branch outside the CI container (Windows host, VitaSDK with GCC 15, CMake 3.22, Ninja)
 and from testing it on a real PS Vita (3.65 Enso, SD2Vita, kubridge).
 
