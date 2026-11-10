@@ -929,7 +929,10 @@ void findGLVersion()
 		{
 			gl.gl_version = "GLES2";
 			gl.glsl_version_header = "";
+#ifndef __vita__
+			// vitaGL handles 32-bit indices: keeping them avoids converting the whole index list every frame
 			gl.index_type = GL_UNSIGNED_SHORT;
+#endif
 			gl.prim_restart_supported = false;
 			gl.prim_restart_fixed_supported = false;
 			gl.single_channel_format = GL_ALPHA;

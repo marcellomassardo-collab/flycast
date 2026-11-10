@@ -14,7 +14,8 @@ Build and install these into the VitaSDK first, in this order:
 1. [SceShaccCgExt](https://github.com/bythos14/SceShaccCgExt). With GCC 15 it needs `-DCMAKE_C_FLAGS=-std=gnu17`.
 2. [vitaShaRK](https://github.com/Rinnegatamante/vitaShaRK), current master (vitaGL needs `shark_set_shader_association_path`).
 3. [vitaGL](https://github.com/Rinnegatamante/vitaGL), current master:
-   `make DEPTH_STENCIL_HACK=1 HAVE_SHADER_CACHE=1 HAVE_WRAPPED_ALLOCATORS=1 NO_DEBUG=1 NO_SPLASHSCREEN=1 install`
+   `make HAVE_SHADER_CACHE=1 HAVE_WRAPPED_ALLOCATORS=1 NO_DEBUG=1 NO_SPLASHSCREEN=1 install`
+   Do **not** use `DEPTH_STENCIL_HACK=1` (see "GPU crashes" below).
    Add `HAVE_SHARK_LOG=1` to get the shader compiler's error text in `flycast.log` when a shader fails to compile.
 4. [SDL, `vitagl` branch](https://github.com/Northfear/SDL): `-DVIDEO_VITA_VGL=ON`.
 
@@ -37,6 +38,16 @@ in `asio/detail/impl/socket_ops.ipp`).
   changing vitaGL version.
 - Old configuration files keep `Dynarec.downclock`, which is ignored now. The SH4 speed is `Sh4Clock` (MHz, default 200).
 - `Dynarec.smcChecks = 0` crashed Rez while loading the first level; `1` (reduced) is stable.
+
+## GPU crashes that power the console off
+
+With vitaGL built with `DEPTH_STENCIL_HACK=1` the depth/stencil surfaces have no memory behind them. That only
+works as long as the GPU never does a partial render, which happens when the parameter buffer fills up in a
+heavy scene. When it does, the GPU crashes (`psp2core-*-GPUCRASH.psp2dmp` in `ux0:data`), the console shows a
+GPU error and powers off. Seen three times: Virtua Tennis within a minute (twice) and Rez in its third level.
+
+Fix: build vitaGL without the hack and give sceGxm an 8 MB parameter buffer instead of 6. After that Virtua
+Tennis ran three minutes of matches without a crash.
 
 ## Measurements (PS Vita 1000, CPU at 500 MHz, widescreen hack on)
 
