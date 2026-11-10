@@ -28,6 +28,8 @@ Option<bool> DynarecEnabled("Dynarec.Enabled", true);
 Option<int> Sh4Clock("Sh4Clock", 200);
 #ifdef __vita__
 Option<int> DynarecSmcChecks("Dynarec.smcChecks", 0);
+Option<bool> DynarecIdleSkip("Dynarec.idleskip", true);
+Option<int> Arm7Clock("aica.Arm7Clock", 100);	// percent of the real AICA ARM7 speed
 #endif
 
 // General

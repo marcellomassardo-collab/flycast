@@ -355,6 +355,8 @@ extern Option<int> Sh4Clock;
 #endif
 #ifdef __vita__
 extern Option<int> DynarecSmcChecks;
+extern Option<bool> DynarecIdleSkip;
+extern Option<int> Arm7Clock;
 extern Option<bool> FastSorting;
 extern Option<bool> UseSimpleShaders;
 #endif

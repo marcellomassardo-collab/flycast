@@ -1061,6 +1061,22 @@ _end:
 
 	verify(blk->oplist.size() <= BLOCK_MAX_SH_OPS_HARD);
 	
+#ifdef __vita__
+	// Idle loop skipping, as in the older Vita port: short loops that only read memory and branch
+	// back on themselves are the game waiting for something (vblank, an interrupt). Charging them
+	// more cycles makes the wait end sooner in host time without changing what the game does.
+	if (config::DynarecIdleSkip)
+	{
+		if (state.info.has_readm && !state.info.has_writem && !state.info.has_fpu && blk->guest_opcodes < 6)
+		{
+			if (blk->BlockType == BET_Cond_0 || (blk->BlockType == BET_Cond_1 && blk->BranchBlock <= blk->vaddr))
+				blk->guest_cycles *= 3;
+			if (blk->BranchBlock == blk->vaddr)
+				blk->guest_cycles *= 10;
+		}
+		blk->guest_cycles = std::min(blk->guest_cycles, max_cycles);
+	}
+#endif
 	blk->guest_cycles = std::round(blk->guest_cycles * 200.f / std::max(1.f, (float)config::Sh4Clock));
 
 	//make sure we don't use wayy-too-few cycles
