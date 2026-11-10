@@ -36,10 +36,25 @@ static f32 f16(u16 v)
 	return *(f32*)&z;
 }
 
+#include <chrono>
+// Vita test mode: scene size and (sampled 1 in 8) time spent looking textures up
+unsigned diag_n_verts = 0, diag_n_polys = 0, diag_n_tex = 0, diag_us_tex = 0;
+static void loadTextureReal(PolyParam *pp, int index);
 static void loadTexture(PolyParam *pp, int index)
 {
 	if (pp->pcw.Texture == 0)
 		return;
+	if ((++diag_n_tex & 7) == 0) {
+		auto t0 = std::chrono::steady_clock::now();
+		loadTextureReal(pp, index);
+		diag_us_tex += 8 * (unsigned)std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::steady_clock::now() - t0).count();
+	}
+	else
+		loadTextureReal(pp, index);
+}
+
+static void loadTextureReal(PolyParam *pp, int index)
+{
 	if (index == 0)
 	{
 		pp->texture = renderer->GetTexture(pp->tsp, pp->tcw, 0);
@@ -1275,6 +1290,8 @@ static void ta_parse_vdrc(TA_context* ctx, bool primRestart)
 				break;
 			}
 		diag_us_tacmd += diagTaNowUs() - diagT0;
+		diag_n_verts += vd_rc.verts.size();
+		diag_n_polys += vd_rc.global_param_op.size() + vd_rc.global_param_pt.size() + vd_rc.global_param_tr.size();
 
 		// Disable blending for opaque polys of the first pass
 		if (pass == 0)

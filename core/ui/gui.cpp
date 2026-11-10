@@ -16,6 +16,7 @@
     You should have received a copy of the GNU General Public License
     along with Flycast.  If not, see <https://www.gnu.org/licenses/>.
  */
+#include <thread>
 #include "gui.h"
 #include "rend/osd.h"
 #include "cfg/cfg.h"
@@ -1490,9 +1491,24 @@ static std::string getFPSNotification()
 							if (diag_sched_us[si] >= 2000) sn += snprintf(sl + sn, sizeof(sl) - sn, " %p=%u", diag_sched_cb[si], diag_sched_us[si] / 1000);
 						NOTICE_LOG(RENDERER, "DIAG sched ms%s", sl);
 						{ extern unsigned diag_us_tacmd, diag_us_pass; NOTICE_LOG(RENDERER, "DIAG scene ms tacmd %u pass %u", diag_us_tacmd / 1000, diag_us_pass / 1000); diag_us_tacmd = diag_us_pass = 0; }
+						{ extern unsigned diag_n_verts, diag_n_polys, diag_n_tex, diag_us_tex; NOTICE_LOG(RENDERER, "DIAG geom verts %u polys %u texlookups %u texms %u", diag_n_verts, diag_n_polys, diag_n_tex, diag_us_tex / 1000); diag_n_verts = diag_n_polys = diag_n_tex = diag_us_tex = 0; }
 						for (int si = 0; si < 32; si++) diag_sched_us[si] = 0;
 					}
 					lastVbl = diag_vblank_count;
+					{
+						// savestate_at.txt holds a number of seconds: make a savestate at that point, to get a
+						// fixed starting scene for later runs (with Dreamcast.AutoLoadState = yes)
+						static int saveAt = -1;
+						if (saveAt == -1) {
+							saveAt = 0;
+							FILE *sf = fopen("ux0:data/flycast/savestate_at.txt", "r");
+							if (sf) { if (fscanf(sf, "%d", &saveAt) != 1) saveAt = 0; fclose(sf); }
+						}
+						if (saveAt > 0 && diagN + 1 == saveAt) {
+							NOTICE_LOG(RENDERER, "DIAG saving state at second %d", saveAt);
+							std::thread([] { gui_saveState(true); }).detach();
+						}
+					}
 					if (++diagN % 30 == 0) {
 						std::vector<u8> shot;
 						getScreenshot(shot, 320);
