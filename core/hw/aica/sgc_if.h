@@ -5,6 +5,7 @@ namespace aica::sgc
 {
 
 void AICA_Sample();
+void AICA_SampleBlock(int count);
 
 void WriteChannelReg(u32 channel, u32 reg, int size);
 

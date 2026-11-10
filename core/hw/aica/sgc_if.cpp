@@ -1544,6 +1544,8 @@ constexpr int CDDA_SIZE = 2352 / 2;
 static s16 cdda_sector[CDDA_SIZE];
 static u32 cdda_index = CDDA_SIZE;
 
+static void finishSample(SampleType mixl, SampleType mixr);
+
 void AICA_Sample()
 {
 	SampleType mixl,mixr;
@@ -1552,7 +1554,40 @@ void AICA_Sample()
 	memset(dsp::state.MIXS, 0, sizeof(dsp::state.MIXS));
 
 	ChannelEx::StepAll(mixl,mixr);
-	
+
+	finishSample(mixl, mixr);
+}
+
+// Mixes up to 32 samples, one channel at a time instead of one sample at a time: the channel state
+// stays in the cache and channels that are off cost nothing. Register writes made by the ARM7 during
+// the block are heard at the next block. The DSP needs per-sample mixing, so it keeps the old path.
+void AICA_SampleBlock(int count)
+{
+	if (config::DSPEnabled)
+	{
+		for (int i = 0; i < count; i++)
+			AICA_Sample();
+		return;
+	}
+	SampleType mixl[32], mixr[32];
+	count = std::min(count, 32);
+	memset(mixl, 0, sizeof(mixl));
+	memset(mixr, 0, sizeof(mixr));
+	memset(dsp::state.MIXS, 0, sizeof(dsp::state.MIXS));
+
+	for (ChannelEx& channel : Chans)
+	{
+		if (!channel.enabled)
+			continue;
+		for (int i = 0; i < count; i++)
+			channel.Step(mixl[i], mixr[i]);
+	}
+	for (int i = 0; i < count; i++)
+		finishSample(mixl[i], mixr[i]);
+}
+
+static void finishSample(SampleType mixl, SampleType mixr)
+{
 	//OK , generated all Channels  , now DSP/ect + final mix ;p
 	//CDDA EXTS input
 	

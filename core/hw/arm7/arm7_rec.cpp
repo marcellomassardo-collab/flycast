@@ -23,6 +23,8 @@
 
 #include "arm7_rec.h"
 #include "arm7.h"
+#include "cfg/option.h"
+#include <algorithm>
 #include "hw/aica/aica_if.h"
 #include "oslib/virtmem.h"
 #include "arm_mem.h"
@@ -734,11 +736,17 @@ void *getMemOp(bool Load, bool Byte)
 
 void run(u32 samples)
 {
+#ifdef __vita__
+	// Sound drivers mostly wait for their timer: a slower ARM7 costs less host time (aica.Arm7Clock, percent)
+	const int arm7Cycles = std::max(1, (int)ARM_CYCLES_PER_SAMPLE * std::min(100, std::max(10, (int)config::Arm7Clock)) / 100);
+#else
+	const int arm7Cycles = ARM_CYCLES_PER_SAMPLE;
+#endif
 	for (u32 i = 0; i < samples; i++)
 	{
 		if (Arm7Enabled)
 		{
-			arm_Reg[CYCL_CNT].I += ARM_CYCLES_PER_SAMPLE;
+			arm_Reg[CYCL_CNT].I += arm7Cycles;
 			arm_mainloop(arm_Reg, recompiler::EntryPoints);
 		}
 		timeStep();

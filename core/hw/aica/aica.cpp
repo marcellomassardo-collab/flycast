@@ -82,11 +82,26 @@ static bool UpdateSh4Ints()
 
 AicaTimer timers[3];
 int aica_schid = -1;
-constexpr int AICA_TICK = 4535;		// 44.1 KHz
+#ifdef __vita__
+// Stepping the AICA one sample at a time means 44100 scheduler events per second, each one
+// leaving the SH4 dynarec. On the Vita that alone takes more than half of the emulation thread.
+// Run it in batches of 32 samples instead, as the older Vita port did.
+constexpr int AICA_BATCH = 32;
+#else
+constexpr int AICA_BATCH = 1;
+#endif
+#ifdef __vita__
+static int pendingSamples;	// samples stepped by timeStep() and not mixed yet
+#endif
+constexpr int AICA_TICK = 4535 * AICA_BATCH;		// 44.1 KHz
 
 static int AicaUpdate(int tag, int cycles, int jitter, void *arg)
 {
-	arm::run(1);
+	arm::run(AICA_BATCH);
+#ifdef __vita__
+	sgc::AICA_SampleBlock(pendingSamples);
+	pendingSamples = 0;
+#endif
 
 	return AICA_TICK;
 }
@@ -101,7 +116,11 @@ void timeStep()
 	SCIPD->SAMPLE_DONE = 1;
 	MCIPD->SAMPLE_DONE = 1;
 
+#ifdef __vita__
+	pendingSamples++;
+#else
 	sgc::AICA_Sample();
+#endif
 
 	//Make sure sh4/arm interrupt system is up to date
 	update_arm_interrupts();
