@@ -16,6 +16,9 @@
     You should have received a copy of the GNU General Public License
     along with Flycast.  If not, see <https://www.gnu.org/licenses/>.
  */
+#ifdef __vita__
+#include <psp2/power.h>
+#endif
 #include <thread>
 #include "gui.h"
 #include "rend/osd.h"
@@ -1478,6 +1481,8 @@ static std::string getFPSNotification()
 					static unsigned lastUnd = 0;
 					NOTICE_LOG(RENDERER, "DIAG fps %.1f vbl %u und %u", fps, diag_vblank_count - lastVbl, audio_underrun_count - lastUnd);
 					lastUnd = audio_underrun_count;
+					if (diagN % 10 == 0)
+						NOTICE_LOG(RENDERER, "DIAG power battery %.1f C charge %d%% cpu %d MHz", scePowerGetBatteryTemp() / 100.f, scePowerGetBatteryLifePercent(), scePowerGetArmClockFrequency());
 					extern unsigned diag_us_process, diag_us_render, diag_us_wait, diag_frames;
 					NOTICE_LOG(RENDERER, "DIAG ms process %u render %u wait %u frames %u", diag_us_process / 1000, diag_us_render / 1000, diag_us_wait / 1000, diag_frames);
 					diag_us_process = diag_us_render = diag_us_wait = diag_frames = 0;
