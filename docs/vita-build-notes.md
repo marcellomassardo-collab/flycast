@@ -88,3 +88,39 @@ is measured against 60, with the audio underrun counter of the test mode.
 - Virtua Tennis (USA) crashes the GPU (`GPUCRASH` dump) and powers the console off.
 
 `pvr.AutoSkipFrame=2` and `rend.ModifierVolumes=no` made no measurable difference in Rez.
+
+## Per-game settings (PS Vita 1000, CPU at 444 MHz)
+
+Flycast reads per-game overrides from a section named after the game ID in `emu.cfg`, for example:
+
+```
+[MK-5105850]
+config.Sh4Clock = 52
+config.aica.Arm7Clock = 50
+```
+
+Global settings for these runs: `Sh4Clock=80`, `aica.Arm7Clock=100`, 480 lines. Each row is the last 60 seconds of an
+85-95 second run started from the same savestate.
+
+| Game (ID) | Sh4Clock / Arm7Clock | fps | vblanks/s (of 60) | audio underruns/s |
+|---|---|---|---|---|
+| Jet Set Radio (MK-5105850) | 80 / 100 | 19.7 | 43.5 | 12.1 |
+| | **52 / 50** | 19.2 | 51.8 | 7.1 |
+| | 45 / 50 | 18.1 | 55.7 | 3.7 |
+| Crazy Taxi 2 (MK-5113650) | 80 / 100 | 36.0 | (see note) | 10.2 |
+| | **50 / 50** | 38.7 | (see note) | 5.0 |
+| Dead or Alive 2 (RDC-0140) | 80 / 100 | 11.3 | 23.3 | 27.5 |
+| | 50 / 50 | 12.3 | 33.6 | 19.2 |
+
+- Jet Set Radio: 52/50 is the chosen compromise. 45/50 is smoother but visibly slows the game logic.
+- Crazy Taxi 2: the vblank counter reads above 60 in this game, so judge it by fps and underruns. The 50/50 result was
+  repeated three times.
+- Dead or Alive 2 stays emulation bound (about 31-35 ms per frame). With 50/50, turning off modifier volumes or fog,
+  `pvr.AutoSkipFrame=2` and `rend.DelayFrameSwapping=no` made no difference.
+- Battery temperature stayed at 30.3 °C during these runs (read with `scePowerGetBatteryTemp`), and the CPU reported 444 MHz.
+
+## Start crash in the memory fault handler
+
+At start the pages being remapped can stay unreachable for hundreds of milliseconds. A fault could then hit the abort
+handler's own callees, and the handler gave up at the first nested fault (SIGSEGV, seen with Crazy Taxi 2). It now waits
+10 ms and retries, up to 50 times, before giving up.
