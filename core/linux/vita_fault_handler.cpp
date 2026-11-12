@@ -11,7 +11,7 @@
 #include "hw/mem/mem_watch.h"
 
 static KuKernelAbortHandler nextHandler;
-static __thread bool threadInFault = false;
+static __thread int threadInFault = 0;
 
 void context_to_segfault(host_context_t *hostctx, void *segfault_ctx)
 {
@@ -65,12 +65,15 @@ void abortHandler(KuKernelAbortContext *abortContext)
 		return;
 	}
 #endif
-	if (!threadInFault)
+	// The pages being remapped can stay unreachable for hundreds of milliseconds at start, and the fault
+	// can hit this handler's own callees: wait and retry instead of giving up at the first nested fault.
+	if (threadInFault < 50)
 	{
-		threadInFault = true;
-		ERROR_LOG(COMMON, "Memory remap race condition detected for address %p (0x%08X) Waiting 10 ms...", (void *)abortContext->FAR, *(uint32_t *)abortContext->FAR);
+		threadInFault++;
+		if (threadInFault == 1)
+			ERROR_LOG(COMMON, "Memory remap race condition detected for address %p. Waiting 10 ms...", (void *)abortContext->FAR);
 		sceKernelDelayThread(10 * 1000);
-		threadInFault = false;
+		threadInFault--;
 
 		return;
 	}
